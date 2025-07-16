@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { BotConfigSchema, BotFlowSchema } from "@/lib/schemas";
+import { BotConfigSchema, BotFlowSchema, BotStepSchema } from "@/lib/schemas";
 import type { Product } from "@/lib/types";
 import { saveBotConfig } from "../../actions";
 import { Separator } from "@/components/ui/separator";
@@ -181,7 +181,7 @@ export function FlowBuilder({ subdomain, initialData, products }: FlowBuilderPro
 
 // Represents the content of a single flow tab
 function FlowContent({ flowIndex, products, onRemoveFlow }: { flowIndex: number; products: Product[]; onRemoveFlow: () => void; }) {
-    const { control, watch, setValue } = useFormContext();
+    const { control, watch, setValue } = useFormContext<z.infer<typeof BotConfigSchema>>();
 
     const { fields: steps, append: appendStep, remove: removeStep } = useFieldArray({
         control,
@@ -284,13 +284,15 @@ function FlowContent({ flowIndex, products, onRemoveFlow }: { flowIndex: number;
 }
 
 
-function StepCard({ flowIndex, stepIndex, removeStep, products, allSteps, isStartStep, setAsStartStep }: { flowIndex: number, stepIndex: number, removeStep: (index: number) => void, products: Product[], allSteps: any[], isStartStep: boolean, setAsStartStep: () => void }) {
-    const { control } = useFormContext();
+function StepCard({ flowIndex, stepIndex, removeStep, products, allSteps, isStartStep, setAsStartStep }: { flowIndex: number, stepIndex: number, removeStep: (index: number) => void, products: Product[], allSteps: z.infer<typeof BotStepSchema>[], isStartStep: boolean, setAsStartStep: () => void }) {
+    const { control, watch, getValues, setValue } = useFormContext<z.infer<typeof BotConfigSchema>>();
     const { fields: buttons, append: appendButton, remove: removeButton } = useFieldArray({
         control,
         name: `flows.${flowIndex}.steps.${stepIndex}.buttons`,
         keyName: "key",
     });
+
+    const stepId = watch(`flows.${flowIndex}.steps.${stepIndex}.id`);
 
     const addNewButton = () => {
         appendButton({
@@ -369,9 +371,10 @@ function StepCard({ flowIndex, stepIndex, removeStep, products, allSteps, isStar
 }
 
 function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products, allSteps }: { flowIndex: number, stepIndex: number, buttonIndex: number, removeButton: (index: number) => void, products: Product[], allSteps: any[] }) {
-    const { control, watch } = useFormContext();
+    const { control, watch } = useFormContext<z.infer<typeof BotConfigSchema>>();
     
-    const actionType = watch(`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.type`);
+    const buttonType = watch(`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.type`);
+    const nextStepId = watch(`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.nextStepId`);
     
     return (
         <div className="p-4 border rounded-md bg-secondary/30 space-y-4">
@@ -397,7 +400,7 @@ function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products,
              <div className="grid md:grid-cols-2 gap-4">
                 <FormField
                     control={control}
-                    name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.type`}
+                    name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.type`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Tipo de Ação</FormLabel>
@@ -417,10 +420,10 @@ function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products,
                     )}
                 />
 
-                {actionType === 'GO_TO_STEP' && (
+                {buttonType === 'GO_TO_STEP' && (
                     <FormField
                         control={control}
-                        name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.payload`}
+                        name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.nextStepId`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Passo de Destino</FormLabel>
@@ -442,10 +445,10 @@ function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products,
                     />
                 )}
 
-                 {actionType === 'LINK_TO_PRODUCT' && (
+                 {buttonType === 'LINK_TO_PRODUCT' && (
                     <FormField
                         control={control}
-                        name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.payload`}
+                        name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.nextStepId`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Produto/Plano</FormLabel>
