@@ -17,14 +17,23 @@ import { checkSubscriptionStatus } from "../actions";
 interface QrCodeDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  qrCode: string;
-  qrCodeBase64: string;
-  subscriptionId: string;
+  qrCodeData: {
+    qrCode: string;
+    qrCodeBase64: string;
+    subscriptionId: string;
+  } | null;
+  subdomain: string;
 }
 
-export function QrCodeDialog({ isOpen, onClose, qrCode, qrCodeBase64, subscriptionId }: QrCodeDialogProps) {
+export function QrCodeDialog({ isOpen, onClose, qrCodeData, subdomain }: QrCodeDialogProps) {
   const { toast } = useToast();
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+
+  if (!qrCodeData) {
+    return null;
+  }
+
+  const { qrCode, qrCodeBase64, subscriptionId } = qrCodeData;
 
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(qrCode);

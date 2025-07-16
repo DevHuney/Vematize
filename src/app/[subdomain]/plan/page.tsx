@@ -84,10 +84,10 @@ export default function ClientPlanPage({ params }: { params: { subdomain: string
 
                 if (pendingSub) {
                     toast({
-                        title: "Você tem um pagamento pendente",
-                        description: "Estamos verificando o status para você.",
+                        title: "Verificando assinatura pendente...",
+                        description: "Encontramos uma assinatura pendente recente e estamos verificando o status para você.",
                     });
-                    const result = await checkSubscriptionStatus(pendingSub._id);
+                    const result = await checkSubscriptionStatus(pendingSub._id.toString());
                     if (result.success && result.status === 'active') {
                         toast({
                             title: "Pagamento Confirmado!",
@@ -160,23 +160,16 @@ export default function ClientPlanPage({ params }: { params: { subdomain: string
             const result = await createSubscriptionPayment(selectedPlan.id, params.subdomain, paymentMethod);
 
             if (result.error) {
-                toast({
-                    title: 'Erro ao processar sua solicitação',
-                    description: result.error,
-                    variant: 'destructive',
+                toast({ variant: 'destructive', title: 'Erro ao criar pagamento', description: result.error });
+            } else if (paymentMethod === 'pix' && result.qrCodeBase64) {
+                 setQrCodeData({
+                    qrCode: result.qrCode!,
+                    qrCodeBase64: result.qrCodeBase64!,
+                    subscriptionId: result.subscriptionId!
                 });
-                setIsProcessingPayment(false);
-                return;
-            }
-
-            if (result.init_point && result.subscriptionId) {
-                window.open(result.init_point, '_blank', 'noopener,noreferrer');
-                setSelectedPlan(null);
-                setPollingSubscriptionId(result.subscriptionId);
-            } else if (result.qrCode && result.qrCodeBase64 && result.subscriptionId) {
-                setQrCodeData({ code: result.qrCode, base64: result.qrCodeBase64, subscriptionId: result.subscriptionId });
                 setIsQrCodeDialogOpen(true);
-                setIsProcessingPayment(false);
+            } else if (paymentMethod === 'card' && result.init_point) {
+                window.location.href = result.init_point;
             }
 
         } catch (error) {
@@ -345,9 +338,8 @@ export default function ClientPlanPage({ params }: { params: { subdomain: string
                 <QrCodeDialog
                     isOpen={isQrCodeDialogOpen}
                     onClose={() => setIsQrCodeDialogOpen(false)}
-                    qrCode={qrCodeData.code}
-                    qrCodeBase64={qrCodeData.base64}
-                    subscriptionId={qrCodeData.subscriptionId}
+                    qrCodeData={qrCodeData}
+                    subdomain={params.subdomain as string}
                 />
             )}
         </>
