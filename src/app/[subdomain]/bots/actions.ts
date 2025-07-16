@@ -7,7 +7,9 @@ import type { Platform } from './platform-config';
 import { z } from 'zod';
 import { BotConfigSchema } from '@/lib/schemas';
 
-export type BotConnections = Tenant['connections'];
+export type BotConnections = {
+    [key in Platform]?: { [key: string]: string };
+};
 export type ConnectionDetails = { [key: string]: string } | undefined;
 
 

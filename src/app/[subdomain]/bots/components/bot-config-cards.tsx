@@ -22,7 +22,7 @@ export function BotConfigCards({ initialConnections }: BotConfigCardsProps) {
             {supportedPlatforms.map(platform => {
                 const config = platformConfigMap[platform];
                 const connection = initialConnections?.[platform];
-                const isConnected = !!(connection && connection[config.connectionCheckKey]);
+                const isConnected = !!(connection && (connection as any)[config.connectionCheckKey]);
                 const Icon = config.icon;
 
                 return (
