@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Vematize',
   description: 'Painel administrativo Vematize.',
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({

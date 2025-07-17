@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { getBotConfig } from "../actions";
 import { platformConfigMap, supportedPlatforms, type Platform } from '../platform-config';
-import { WhatsappConnectionManager } from "./components/config-form";
+import { PlatformConnectionManager } from "./components/config-form";
 import { FlowBuilder } from "./components/flow-builder";
 import { getProducts } from "../../products/actions";
 
@@ -20,9 +20,8 @@ export default async function BotPlatformPage({ params }: { params: { subdomain:
     
     const config = platformConfigMap[platformKey];
 
-    // Se não for WhatsApp, manteria a lógica antiga (se houver)
-    // Por enquanto, focamos no WhatsApp
-    if (platformKey !== 'whatsapp') {
+    // Por enquanto, focamos no Telegram
+    if (platformKey !== 'telegram') {
          // Aqui você pode renderizar a UI para outras plataformas ou uma mensagem de "em desenvolvimento"
         return (
              <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -35,7 +34,7 @@ export default async function BotPlatformPage({ params }: { params: { subdomain:
                     </Button>
                     <h1 className="text-2xl font-bold tracking-tight">{config.title}</h1>
                 </div>
-                <p>A configuração para {platform} ainda está em desenvolvimento.</p>
+                <p>A configuração para {platform} não está disponível no momento.</p>
             </div>
         )
     }
@@ -62,7 +61,7 @@ export default async function BotPlatformPage({ params }: { params: { subdomain:
                     <TabsTrigger value="flow">Fluxo do Bot</TabsTrigger>
                 </TabsList>
                 <TabsContent value="connection" className="pt-6">
-                   <WhatsappConnectionManager 
+                   <PlatformConnectionManager 
                         subdomain={subdomain}
                     />
                 </TabsContent>
