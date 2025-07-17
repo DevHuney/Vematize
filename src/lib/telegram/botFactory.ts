@@ -140,6 +140,15 @@ export function createBotInstance(token: string) {
         console.log(`[Telegraf] Tenant '${tenant.subdomain}' encontrado para o token prefix ${token.substring(0, 10)}...`);
 
         // **VERIFICAÇÃO DA ASSINATURA**
+        const parseResult = BotConfigSchema.safeParse(tenant.botConfig);
+        
+        if (!parseResult.success) {
+            console.warn(`[Telegraf] Tenant '${tenant.subdomain}' has invalid bot config. Allowing access but features might fail.`);
+        } else {
+            // Attach the validated and structured config to the tenant object for later use
+            (tenant as any).botConfig = parseResult.data;
+        }
+
         if (tenant.subscriptionStatus === 'inactive') {
             console.log(`[Telegraf] Tenant '${tenant.subdomain}' está INATIVO. Bloqueando bot.`);
             const inactiveMessage = tenant.botConfig?.inactiveSubscriptionMessage || 'Este serviço foi temporariamente suspenso. Por favor, contate o administrador.';

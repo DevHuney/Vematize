@@ -45,7 +45,7 @@ export default function ClientPlanPage({ params }: { params: { subdomain: string
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isQrCodeDialogOpen, setIsQrCodeDialogOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<SaasPlan | null>(null);
-    const [qrCodeData, setQrCodeData] = useState<{ code: string; base64: string; subscriptionId: string; } | null>(null);
+    const [qrCodeData, setQrCodeData] = useState<{ qrCode: string; qrCodeBase64: string, subscriptionId: string } | null>(null);
     const [pollingSubscriptionId, setPollingSubscriptionId] = useState<string | null>(null);
 
     const subscriptionError = searchParams.get('error');
@@ -98,7 +98,7 @@ export default function ClientPlanPage({ params }: { params: { subdomain: string
                     } else if (pendingSub.paymentGateway !== 'card') { // If it's PIX, we can show the QR code again
                          const paymentResult = await createSubscriptionPayment(pendingSub.planId.toString(), params.subdomain, 'pix');
                          if(paymentResult.qrCode && paymentResult.qrCodeBase64 && paymentResult.subscriptionId) {
-                            setQrCodeData({ code: paymentResult.qrCode, base64: paymentResult.qrCodeBase64, subscriptionId: paymentResult.subscriptionId });
+                            setQrCodeData({ qrCode: paymentResult.qrCode, qrCodeBase64: paymentResult.qrCodeBase64, subscriptionId: paymentResult.subscriptionId });
                             setIsQrCodeDialogOpen(true);
                          }
                     }

@@ -1,27 +1,36 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { SaasSettingsSchema } from '@/lib/schemas';
+import { MercadoPagoSettingsSchema } from '@/lib/schemas';
 import { getMercadoPagoSettings, updateMercadoPagoSettings } from './actions';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
-type MercadoPagoFormValues = z.infer<typeof SaasSettingsSchema>;
+type MercadoPagoFormValues = z.infer<typeof MercadoPagoSettingsSchema>;
 
 export function MercadoPagoForm({ subdomain }: { subdomain: string }) {
     const { toast } = useToast();
+    const [mode, setMode] = useState<'sandbox' | 'production'>('sandbox');
 
     const form = useForm<MercadoPagoFormValues>({
-        resolver: zodResolver(SaasSettingsSchema),
+        resolver: zodResolver(MercadoPagoSettingsSchema),
         defaultValues: {
-            mercadopagoPublicKey: '',
-            mercadopagoAccessToken: '',
+            mode: 'sandbox',
+            sandbox_public_key: '',
+            sandbox_access_token: '',
+            sandbox_webhook_secret: '',
+            production_public_key: '',
+            production_access_token: '',
+            production_webhook_secret: '',
         },
     });
 
@@ -30,6 +39,7 @@ export function MercadoPagoForm({ subdomain }: { subdomain: string }) {
             const settings = await getMercadoPagoSettings(subdomain);
             if (settings) {
                 form.reset(settings);
+                setMode(settings.mode);
             }
         }
         fetchSettings();
@@ -54,33 +64,101 @@ export function MercadoPagoForm({ subdomain }: { subdomain: string }) {
             </CardHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
                         <FormField
                             control={form.control}
-                            name="mercadopagoPublicKey"
+                            name="mode"
                             render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Mercado Pago - Public Key</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="APP_USR-..." {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Modo de Operação</FormLabel>
+                                        <FormDescription>
+                                            Use 'Sandbox' para testar e 'Produção' para pagamentos reais.
+                                        </FormDescription>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Label>Sandbox</Label>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value === 'production'}
+                                                onCheckedChange={(checked) => {
+                                                    const newMode = checked ? 'production' : 'sandbox';
+                                                    field.onChange(newMode);
+                                                    setMode(newMode);
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <Label>Produção</Label>
+                                    </div>
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="mercadopagoAccessToken"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Mercado Pago - Access Token</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" placeholder="••••••••••••••••" {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+
+                        <Separator />
+
+                        {mode === 'sandbox' && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Credenciais de Teste (Sandbox)</h3>
+                                <FormField
+                                    control={form.control}
+                                    name='sandbox_public_key'
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Public Key</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="APP_USR-..." {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name='sandbox_access_token'
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Access Token</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" placeholder="TEST-..." {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        {mode === 'production' && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Credenciais de Produção</h3>
+                                <FormField
+                                    control={form.control}
+                                    name='production_public_key'
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Public Key</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="APP_USR-..." {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name='production_access_token'
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Access Token</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" placeholder="PROD-..." {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
                     </CardContent>
                     <CardFooter>
                         <Button type="submit" disabled={form.formState.isSubmitting}>

@@ -86,7 +86,13 @@ export async function POST(
             }
 
             if (newStatus === 'active') {
-                const planId = mpPayment.items?.[0]?.id;
+                const planId = mpPayment.metadata?.plan_id;
+                
+                if (!planId) {
+                    console.error(`[Krov MP Webhook] plan_id not found in metadata for payment ${paymentId}.`);
+                    return NextResponse.json({ success: false, message: 'Plan ID not found in payment metadata.' }, { status: 400 });
+                }
+
                 const plan = await db.collection<SaasPlan>('plans').findOne({ _id: new ObjectId(planId) });
                 
                 if (!plan) {

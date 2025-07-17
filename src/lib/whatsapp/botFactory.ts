@@ -168,10 +168,22 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
 
     // --- Main Flow Logic ---
     const botConfig = tenant.botConfig;
-    if (!botConfig || !botConfig.startStepId) {
-        return sendTextMessage(tenant, senderId, "Olá! Este bot ainda não foi configurado ou não possui um passo inicial.");
+    if (!botConfig || !botConfig.flows || botConfig.flows.length === 0) {
+        return sendTextMessage(tenant, senderId, "Olá! Este bot ainda não foi configurado.");
     }
-    const allSteps = botConfig.steps;
+
+    // Find the flow triggered by '/start' or the first flow available
+    const mainFlow = botConfig.flows.find(f => f.trigger === '/start') || botConfig.flows[0];
+    if (!mainFlow || !mainFlow.startStepId) {
+         return sendTextMessage(tenant, senderId, "Olá! O fluxo principal do bot não está configurado corretamente.");
+    }
+
+    const allSteps = mainFlow.steps;
+    const currentStep = allSteps.find(s => s.id === mainFlow.startStepId);
+
+    if (!currentStep) {
+        return sendTextMessage(tenant, senderId, "O passo inicial do bot não foi encontrado.");
+    }
 
     // Is it a callback action (e.g., from a list)?
     if (command.includes(':')) {
@@ -189,7 +201,7 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
         }
 
         if (actionType === 'MAIN_MENU') {
-            const startStep = allSteps.find(s => s.id === botConfig.startStepId);
+            const startStep = allSteps.find(s => s.id === mainFlow.startStepId);
             if (startStep) await executeStep(tenant, senderId, startStep);
             return;
         }
@@ -201,11 +213,11 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
 
     // Is it the trigger command?
     if (command.trim().toLowerCase() === '/start') {
-        const startStep = allSteps.find(s => s.id === botConfig.startStepId);
+        const startStep = allSteps.find(s => s.id === mainFlow.startStepId);
         if (startStep) {
             await executeStep(tenant, senderId, startStep);
         } else {
-             console.error(`[Whatsapp Bot] Start step with ID ${botConfig.startStepId} not found.`);
+             console.error(`[Whatsapp Bot] Start step with ID ${mainFlow.startStepId} not found.`);
              await sendTextMessage(tenant, senderId, "Este fluxo está configurado incorretamente.");
         }
     } else {

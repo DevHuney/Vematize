@@ -156,6 +156,8 @@ export const BotFlowSchema = z.object({
 
 export const BotConfigSchema = z.object({
   flows: z.array(BotFlowSchema),
+  inactiveSubscriptionMessage: z.string().optional(),
+  deliveryMessage: z.string().optional(),
 });
 
 export const KrovSettingsSchema = z.object({

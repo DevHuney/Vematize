@@ -1,4 +1,6 @@
 import type { ObjectId } from 'mongodb';
+import { z } from 'zod';
+import { BotConfigSchema } from './schemas';
 
 export interface User {
   _id: ObjectId;
@@ -51,11 +53,7 @@ export interface BotStep {
   buttons: BotButton[];
 }
 
-export interface BotConfig {
-  startStepId: string | null;
-  steps: BotStep[];
-  deliveryMessage?: string;
-}
+export type BotConfig = z.infer<typeof BotConfigSchema>;
 
 export interface Tenant {
   _id: ObjectId;

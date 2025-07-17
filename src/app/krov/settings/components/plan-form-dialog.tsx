@@ -74,8 +74,20 @@ export function PlanFormDialog({ open, onOpenChange, plan, onPlanSaved }: PlanFo
 
   async function onSubmit(values: z.infer<typeof SaasPlanSchema>) {
     setIsSaving(true);
+    
+    const formData = new FormData();
+    Object.entries(values).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+            if (Array.isArray(value)) {
+                value.forEach(item => formData.append(key, item));
+            } else {
+                formData.append(key, String(value));
+            }
+        }
+    });
+
     try {
-      const result = await saveSaasPlan(values);
+      const result = await saveSaasPlan(formData);
       if (result.success) {
         toast({ title: 'Sucesso!', description: result.message });
         onPlanSaved();
