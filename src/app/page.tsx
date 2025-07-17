@@ -15,6 +15,7 @@ function formatCurrency(value: number) {
 
 const platforms = ['Telegram', 'WhatsApp', 'Instagram'];
 
+// Trigger new deployment
 export default function HomePage() {
   const [plans, setPlans] = useState<SaasPlan[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
