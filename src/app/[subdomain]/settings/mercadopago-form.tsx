@@ -134,29 +134,29 @@ export function MercadoPagoForm({ subdomain }: { subdomain: string }) {
                                 <FormField
                                     control={form.control}
                                     name='production_public_key'
-                                    render={({ field }) => (
-                                        <FormItem>
+                            render={({ field }) => (
+                                <FormItem>
                                             <FormLabel>Public Key</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="APP_USR-..." {...field} value={field.value ?? ''} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
+                                    <FormControl>
+                                        <Input placeholder="APP_USR-..." {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
                                     name='production_access_token'
-                                    render={({ field }) => (
-                                        <FormItem>
+                            render={({ field }) => (
+                                <FormItem>
                                             <FormLabel>Access Token</FormLabel>
-                                            <FormControl>
+                                    <FormControl>
                                                 <Input type="password" placeholder="PROD-..." {...field} value={field.value ?? ''} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                             </div>
                         )}
                     </CardContent>

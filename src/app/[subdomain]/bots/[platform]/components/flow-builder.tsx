@@ -373,7 +373,7 @@ function StepCard({ flowIndex, stepIndex, removeStep, products, allSteps, isStar
 // Represents a single button card
 function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products, allSteps }: { flowIndex: number, stepIndex: number, buttonIndex: number, removeButton: (index: number) => void, products: Product[], allSteps: any[] }) {
     const { control, watch } = useFormContext<z.infer<typeof BotConfigSchema>>();
-
+    
     const buttonType = watch(`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.type`);
     
     return (
@@ -396,52 +396,52 @@ function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products,
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField
-                        control={control}
-                        name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.text`}
-                        render={({ field }) => (
+                <FormField
+                    control={control}
+                    name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.text`}
+                    render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Texto do Botão</FormLabel>
-                                <FormControl>
+                            <FormLabel>Texto do Botão</FormLabel>
+                            <FormControl>
                                     <Input {...field} placeholder="Ex: Ver Produtos" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <FormField
-                        control={control}
-                        name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.type`}
-                        render={({ field }) => (
-                            <FormItem>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={control}
+                    name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.type`}
+                    render={({ field }) => (
+                        <FormItem>
                                 <FormLabel>Ação</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecione uma ação" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
+                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione uma ação" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
                                         <SelectItem value="GO_TO_STEP">Ir para outro passo</SelectItem>
                                         <SelectItem value="LINK_TO_PRODUCT">Link para Produto</SelectItem>
                                         <SelectItem value="MAIN_MENU">Menu Principal</SelectItem>
                                         <SelectItem value="SHOW_PROFILE">Mostrar Perfil</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 {buttonType === 'GO_TO_STEP' && (
-                     <FormField
+                    <FormField
                         control={control}
                         name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.payload`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Passo de Destino</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
+                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Selecione o passo" />
                                         </SelectTrigger>
@@ -459,22 +459,22 @@ function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products,
                 )}
 
                 {buttonType === 'LINK_TO_PRODUCT' && (
-                     <FormField
+                    <FormField
                         control={control}
                         name={`flows.${flowIndex}.steps.${stepIndex}.buttons.${buttonIndex}.action.payload`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Produto</FormLabel>
-                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Selecione o produto" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        {products.map(product => (
+                                    {products.map(product => (
                                             <SelectItem key={product.id} value={product.id!}>{product.name}</SelectItem>
-                                        ))}
+                                    ))}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -482,7 +482,7 @@ function ButtonCard({ flowIndex, stepIndex, buttonIndex, removeButton, products,
                         )}
                     />
                 )}
-                </div>
+            </div>
             </CardContent>
         </Card>
     );

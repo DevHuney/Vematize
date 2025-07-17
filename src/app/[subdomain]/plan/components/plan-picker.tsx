@@ -79,10 +79,10 @@ export function PlanPicker({ subdomain, currentPlanId }: PlanPickerProps) {
                 onValueChange={setSelectedPlanId}
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-                {plans.map((plan) => (
+            {plans.map((plan) => (
                     <Label key={plan.id} htmlFor={plan.id} className="cursor-pointer">
                         <Card className={`flex flex-col h-full ${selectedPlanId === plan.id ? 'border-primary' : ''}`}>
-                             <CardHeader>
+                    <CardHeader>
                                 <div className="flex justify-between items-start">
                                     <h3 className="text-2xl font-semibold">{plan.name}</h3>
                                     <RadioGroupItem value={plan.id!} id={plan.id} />
@@ -91,48 +91,48 @@ export function PlanPicker({ subdomain, currentPlanId }: PlanPickerProps) {
                                     R$ {plan.price.toFixed(2)}
                                     <span className="text-sm font-normal text-muted-foreground">/{plan.durationDays} dias</span>
                                 </p>
-                            </CardHeader>
+                    </CardHeader>
                             <CardContent className="flex-1 space-y-4">
-                                <ul className="space-y-2">
-                                    {plan.features.map((feature) => (
-                                        <li key={feature} className="flex items-center">
-                                            <Check className="h-4 w-4 mr-2 text-green-500" />
-                                            {feature}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
+                        <ul className="space-y-2">
+                            {plan.features.map((feature) => (
+                                <li key={feature} className="flex items-center">
+                                    <Check className="h-4 w-4 mr-2 text-green-500" />
+                                    {feature}
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
                         </Card>
                     </Label>
                 ))}
             </RadioGroup>
 
             <div className="mt-10 flex flex-col items-center gap-6">
-                 <RadioGroup 
+                                    <RadioGroup
                     defaultValue="pix" 
-                    onValueChange={(value: 'pix' | 'card') => setPaymentMethod(value)}
+                                        onValueChange={(value: 'pix' | 'card') => setPaymentMethod(value)}
                     className="flex items-center gap-6"
-                >
-                    <div className="flex items-center space-x-2">
+                                    >
+                                        <div className="flex items-center space-x-2">
                         <RadioGroupItem value="pix" id="pix" />
                         <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer">
                             <DollarSign className="h-5 w-5" />
                             <span>Pagar com PIX</span>
                         </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
+                                        </div>
+                                        <div className="flex items-center space-x-2">
                         <RadioGroupItem value="card" id="card" />
                         <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer">
                             <CreditCard className="h-5 w-5" />
                             <span>Pagar com Cartão</span>
                         </Label>
-                    </div>
-                </RadioGroup>
+                                        </div>
+                                    </RadioGroup>
 
                 <Button onClick={handleSubscription} disabled={isLoading || !selectedPlanId} size="lg">
                     {isLoading ? "Processando..." : "Assinar Agora"}
                 </Button>
-            </div>
+                                </div>
              <QrCodeDialog 
                 isOpen={isQrCodeDialogOpen}
                 onClose={() => setIsQrCodeDialogOpen(false)}
