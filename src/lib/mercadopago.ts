@@ -1,7 +1,7 @@
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
-import { Tenant, Product } from './types'; // Importar tipos para clareza
+import { Tenant, Product } from './types';
 
 export async function createMercadoPagoPreference(
     tenant: Tenant,

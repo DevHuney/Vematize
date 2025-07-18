@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except for:
-     * 1. /api routes (mas não a nossa API de status)
-     * 2. /_next (Next.js internals)
-     * 3. /_static (inside /public)
-     * 4. all root files inside /public (e.g. /favicon.ico)
-     */
     '/((?!api/|_next/|_static/|[\\w-]+\\.\\w+).*)',
   ],
 };
@@ -17,15 +10,12 @@ export default async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get('host');
   
-  // Extrai o subdomínio
   const subdomain = hostname?.split('.')[0] || '';
 
-  // Ignora rotas do painel krov, da landing page principal e rotas de autenticação
   if (subdomain === 'krov' || subdomain === '' || subdomain === 'www' || url.pathname.startsWith('/login') || url.pathname.startsWith('/register')) {
     return NextResponse.next();
   }
 
-  // Se for um subdomínio de tenant, verifica o status da assinatura via API interna
   try {
     const api_url = `${url.protocol}//${hostname}/api/tenant-status/${subdomain}`;
     const response = await fetch(api_url);
@@ -44,7 +34,6 @@ export default async function middleware(req: NextRequest) {
             }
         }
     } else {
-        // Se a API de status falhar, registra o erro mas permite o acesso para evitar bloquear usuários.
         console.warn(`[Middleware] A verificação de status do tenant falhou com status ${response.status} para o subdomínio ${subdomain}.`);
     }
 

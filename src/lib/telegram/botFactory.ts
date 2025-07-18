@@ -6,44 +6,33 @@ import { z } from 'zod';
 import { Db, ObjectId } from 'mongodb';
 import { createMercadoPagoPreference, createMercadoPagoPixPayment } from '@/lib/mercadopago';
 
-/**
- * Escapes characters for Telegram's MarkdownV2 parse mode.
- * @param text The text to escape.
- * @returns The escaped text.
- */
 function escapeMarkdown(text: string): string {
   if (!text) return '';
-  // List of characters to escape in MarkdownV2
   const charsToEscape = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
   return charsToEscape.reduce((acc, char) => acc.replace(new RegExp('\\' + char, 'g'), '\\' + char), text);
 }
 
-// Helper to replace placeholders like {userName}
 function replacePlaceholders(text: string, from: any): string {
     if (!text) return '';
     return text.replace(/{userName}/g, from?.first_name || 'usuário');
 }
 
-// Helper to build keyboards
 function buildKeyboard(buttons: BotButton[] | undefined): { inline_keyboard: { text: string; callback_data: string; }[][]; } | undefined {
     if (!buttons || buttons.length === 0) {
         return undefined;
     }
     const keyboard = buttons.map(button => {
         const action = button.action;
-        // If there's a payload, format it with the type. Otherwise, just use the type.
         const callback_data = action.payload ? `${action.type}:${action.payload}` : action.type;
         return [{ text: button.text, callback_data }];
     });
     return { inline_keyboard: keyboard };
 }
 
-// Generic function to display any step
 async function executeStep(ctx: any, step: BotStep) {
     const messageText = replacePlaceholders(step.message, ctx.from);
     const keyboard = buildKeyboard(step.buttons);
 
-    // Escape message for MarkdownV2
     const escapedMessage = escapeMarkdown(messageText);
 
     try {
@@ -68,7 +57,6 @@ async function executeStep(ctx: any, step: BotStep) {
     }
 }
 
-// Helper function to generate the profile message and keyboard
 async function generateProfileMessage(db: Db, user: User, options: { showBackButton?: boolean, startStepId?: string | null } = {}) {
     const { showBackButton = false, startStepId = null } = options;
     let profileMessage = `*Perfil de ${escapeMarkdown(user.name || 'Usuário')}*\n\n`;
@@ -115,11 +103,8 @@ async function generateProfileMessage(db: Db, user: User, options: { showBackBut
 export function createBotInstance(token: string) {
     const bot = new Telegraf(token);
 
-    // --- MIDDLEWARE ---
     bot.use(async (ctx: any, next) => {
-        // Evita buscas repetidas no banco de dados se o tenant já foi anexado
         if (ctx.tenant) {
-            // Se o tenant já foi verificado e está inativo, não faz nada.
             if (ctx.tenant.subscriptionStatus === 'inactive') return;
             return next();
         }
@@ -130,7 +115,6 @@ export function createBotInstance(token: string) {
         
         if (!tenant) {
             console.warn(`[Telegraf] Tenant não encontrado para o token ${token.substring(0, 10)}...`);
-            // Se não encontrar o tenant, configura uma resposta padrão e para.
             bot.on('message', ctx => ctx.reply('Este bot não está configurado corretamente.'));
             bot.on('callback_query', ctx => ctx.answerCbQuery('Bot não configurado.'));
             return;
@@ -139,13 +123,11 @@ export function createBotInstance(token: string) {
         ctx.tenant = tenant;
         console.log(`[Telegraf] Tenant '${tenant.subdomain}' encontrado para o token prefix ${token.substring(0, 10)}...`);
 
-        // **VERIFICAÇÃO DA ASSINATURA**
         const parseResult = BotConfigSchema.safeParse(tenant.botConfig);
         
         if (!parseResult.success) {
             console.warn(`[Telegraf] Tenant '${tenant.subdomain}' has invalid bot config. Allowing access but features might fail.`);
         } else {
-            // Attach the validated and structured config to the tenant object for later use
             (tenant as any).botConfig = parseResult.data;
         }
 
@@ -153,24 +135,19 @@ export function createBotInstance(token: string) {
             console.log(`[Telegraf] Tenant '${tenant.subdomain}' está INATIVO. Bloqueando bot.`);
             const inactiveMessage = tenant.botConfig?.inactiveSubscriptionMessage || 'Este serviço foi temporariamente suspenso. Por favor, contate o administrador.';
             
-            // Substitui todos os handlers por uma única resposta de "inativo".
             bot.on('message', ctx => ctx.reply(inactiveMessage));
             bot.on('callback_query', ctx => ctx.answerCbQuery(inactiveMessage));
             
-            // Para a execução, impedindo que outros middlewares ou handlers rodem.
             return;
         }
 
         return next();
     });
 
-    // --- COMANDOS ---
-
-    // Generic command handler
     bot.on('text', async (ctx: any) => {
         const command = ctx.message.text;
         if (!command || !command.startsWith('/')) {
-            return; // Not a command, ignore
+            return; 
         }
         
         console.log(`[Telegraf] Received command "${command}" for chat ID: ${ctx.chat.id}`);
@@ -179,7 +156,6 @@ export function createBotInstance(token: string) {
             return ctx.reply("Olá! Este bot ainda não foi ativado.");
         }
 
-        // Upsert user on any command interaction
         try {
             const db = (await clientPromise).db('vematize');
             await db.collection('users').updateOne(
@@ -217,14 +193,12 @@ export function createBotInstance(token: string) {
                  return ctx.reply("Este fluxo está configurado incorretamente (passo inicial não encontrado).");
             }
         } else {
-             // Handle the specific /perfil command separately
             if (command === '/perfil') {
                 const db = (await clientPromise).db('vematize');
                 const user = await db.collection<User>('users').findOne({ telegramId: ctx.from.id, tenantId: tenant._id.toString() });
 
                 if (!user) return ctx.reply("Não encontrei seu perfil. Interaja com o bot primeiro para se registrar.");
                 
-                // Find the main flow (e.g., /start) to get a potential "back" button target
                 const mainFlow = botConfig.flows.find((f: z.infer<typeof import('@/lib/schemas').BotFlowSchema>) => f.trigger === '/start');
                 const { profileMessage, keyboard } = await generateProfileMessage(db, user, { showBackButton: !!mainFlow, startStepId: mainFlow?.startStepId || null });
         
@@ -236,8 +210,6 @@ export function createBotInstance(token: string) {
         }
     });
 
-    // --- ACTIONS ---
-
     bot.on('callback_query', async (ctx: any) => {
         const data = ctx.callbackQuery.data;
         const tenant = ctx.tenant as Tenant;
@@ -248,319 +220,330 @@ export function createBotInstance(token: string) {
             return ctx.reply("Este bot não está configurado corretamente (Tenant não encontrado).");
         }
         
-        const parseResult = BotConfigSchema.safeParse(tenant.botConfig);
-        if (!parseResult.success) {
-            return ctx.reply("Este bot não está configurado corretamente (Configuração inválida).");
-        }
-        const botConfig = parseResult.data;
-
         const db = (await clientPromise).db('vematize');
-        
-        // Handle actions with and without payloads
-        let actionType: string;
-        let actionPayload: string | undefined;
+        const usersCollection = db.collection<User>('users');
+        const user = await usersCollection.findOne({ telegramId: ctx.from.id, tenantId: tenant._id.toString() });
 
-        if (data.includes(':')) {
-            [actionType, actionPayload] = data.split(/:(.+)/);
-        } else {
-            actionType = data;
+        if (!user) {
+            return ctx.answerCbQuery('Usuário não encontrado. Tente enviar /start primeiro.');
         }
 
-        if (actionType === 'SHOW_PROFILE') {
-            const user = await db.collection<User>('users').findOne({ telegramId: ctx.from.id, tenantId: tenant._id.toString() });
-            
-            if (!user) return ctx.answerCbQuery('Usuário não encontrado.');
+        const botConfig = tenant.botConfig;
+        if (!botConfig || !botConfig.flows || botConfig.flows.length === 0) {
+            return ctx.answerCbQuery("Bot não configurado.");
+        }
 
-            const mainFlow = botConfig.flows.find((f: z.infer<typeof import('@/lib/schemas').BotFlowSchema>) => f.trigger === '/start');
-            const { profileMessage, keyboard } = await generateProfileMessage(db, user, { 
-                showBackButton: true, 
-                startStepId: mainFlow?.startStepId || null
-            });
-
-            try {
-                await ctx.editMessageText(profileMessage, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
-            } catch (e: any) {
-                console.error(`[Telegraf] Failed to edit message for SHOW_PROFILE:`, e.response?.description || e);
-                await ctx.answerCbQuery('Erro ao mostrar o perfil.');
-            }
-
-        } else if (actionType === 'DELETE_DATA_CONFIRM') {
-            const message = '⚠️ *Atenção\\!*\\n\\nVocê tem certeza que deseja deletar todos os seus dados associados a este bot\\?\\n\\n*Esta ação é irreversível\\.*';
-            const keyboard = {
+        const allFlows = botConfig.flows;
+        const allSteps = allFlows.flatMap(flow => flow.steps);
+        
+        if (data === 'DELETE_DATA_CONFIRM') {
+            const confirmationKeyboard = {
                 inline_keyboard: [
-                    [
-                        { text: 'Sim, deletar agora', callback_data: 'DELETE_DATA_EXECUTE' },
-                        { text: 'Não, voltar', callback_data: 'SHOW_PROFILE' }
-                    ]
+                    [{ text: '🔴 Sim, deletar TUDO', callback_data: 'DELETE_DATA_EXECUTE' }],
+                    [{ text: '🟢 Não, manter meus dados', callback_data: 'MAIN_MENU' }]
                 ]
             };
-            await ctx.editMessageText(message, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
+            const message = '⚠️ *Atenção!* Esta ação é irreversível\\. Ao confirmar, todos os seus dados, incluindo histórico de compras e assinaturas, serão permanentemente apagados\\. Deseja continuar?';
+            return await ctx.editMessageText(message, { parse_mode: 'MarkdownV2', reply_markup: confirmationKeyboard });
+        }
 
-        } else if (actionType === 'DELETE_DATA_EXECUTE') {
-            const tenant = ctx.tenant;
-            const db = (await clientPromise).db('vematize');
-            
-            await ctx.editMessageText('Deletando seus dados... ⏳');
+        if (data === 'DELETE_DATA_EXECUTE') {
+             try {
+                await usersCollection.deleteOne({ _id: user._id });
+                await ctx.editMessageText('✅ Seus dados foram deletados com sucesso.');
+             } catch(e) {
+                console.error(`[Telegraf] Failed to delete user data for ${user._id}:`, e);
+                await ctx.editMessageText('❌ Ocorreu um erro ao deletar seus dados. Por favor, tente novamente.');
+             }
+             return;
+        }
 
-            const result = await db.collection('users').deleteOne({ telegramId: ctx.from.id, tenantId: tenant._id.toString() });
-
-            if (result.deletedCount > 0) {
-                await ctx.editMessageText('✅ Seus dados foram removidos com sucesso. Use /start para começar de novo.');
-            } else {
-                await ctx.editMessageText('❌ Não foi possível remover seus dados. Pode ser que eles já tenham sido removidos.');
-            }
+        const [actionType, payload] = data.split(':', 2);
         
-        } else if (actionType === 'GO_TO_STEP') {
-            if (!actionPayload) {
-                return ctx.answerCbQuery('Ação inválida.');
-            }
-            // Find the step across all flows
-            let targetStep: BotStep | undefined;
-            for (const flow of botConfig.flows) {
-                const step = flow.steps.find((s: BotStep) => s.id === actionPayload);
-                if (step) {
-                    targetStep = step;
-                    break;
-                }
-            }
+        if (!actionType) {
+            console.warn(`[Telegraf] Received callback_query with invalid data: "${data}"`);
+            return ctx.answerCbQuery('Ação inválida.');
+        }
 
-            if (targetStep) {
-                await executeStep(ctx, targetStep);
-            } else {
-                console.warn(`[Telegraf] Step with ID ${actionPayload} not found in any flow.`);
-                await ctx.answerCbQuery("Este botão parece estar desatualizado.", { show_alert: true });
-            }
-        } else if (actionType === 'LINK_TO_PRODUCT') {
-            if (!actionPayload || !ObjectId.isValid(actionPayload)) {
-                return ctx.reply("Erro: ID de produto inválido.");
-            }
-            
-            const product = await db.collection<Product>('products').findOne({ 
-                _id: new ObjectId(actionPayload), 
-                tenantId: tenant._id.toString() 
-            });
+        const targetStep = allSteps.find(s => s.id === payload);
 
-            if (product) {
-                console.log(`[Telegraf] Found product: ${product.name}`);
-                
-                let productMessage = `*${product.name}*\n\n${product.description || ''}\n\n`;
-                const isOfferActive = product.discountPrice != null && product.offerExpiresAt && new Date(product.offerExpiresAt) > new Date();
-                
-                const availableMethods: { name: string; type: 'pix' | 'credit_card'; gateway: string; }[] = [];
-                if (product.paymentMethods?.pix && product.paymentMethods.pix !== 'none') {
-                    availableMethods.push({ name: 'PIX', type: 'pix', gateway: product.paymentMethods.pix });
-                }
-                if (product.paymentMethods?.credit_card && product.paymentMethods.credit_card !== 'none') {
-                    availableMethods.push({ name: 'Cartão de Crédito', type: 'credit_card', gateway: product.paymentMethods.credit_card });
-                }
-
-                let keyboard;
-
-                if (product.price === 0) {
-                    productMessage += `*Preço: Grátis!*\n\nClique abaixo para obter.`;
-                    keyboard = { inline_keyboard: [[{ text: "✅ Obter Agora", callback_data: `ACQUIRE_PRODUCT:${product._id.toString()}` }]] };
-                } else if (availableMethods.length > 0) {
-                    const price = isOfferActive ? product.discountPrice! : product.price;
-                    const priceString = `*Preço: R$ ${price.toFixed(2).replace('.', ',')}*`;
-                    const originalPriceString = isOfferActive ? ` (de ~R$ ${product.price.toFixed(2).replace('.', ',')}~)` : '';
-                    productMessage += `${priceString}${originalPriceString}\n\nEscolha como deseja pagar:`;
-
-                    const paymentButtons = availableMethods.map(method => ({
-                        text: `Pagar com ${method.name}`,
-                        callback_data: `BUY_WITH_METHOD:${method.type}:${method.gateway}:${product._id.toString()}`
-                    }));
-                    keyboard = { 
-                        inline_keyboard: [
-                            paymentButtons,
-                            [{ text: '⬅️ Voltar ao Início', callback_data: 'START_OVER' }]
-                        ] 
-                    };
+        switch (actionType) {
+            case 'GO_TO_STEP':
+                if (targetStep) {
+                    await executeStep(ctx, targetStep);
                 } else {
-                    productMessage += `*Produto indisponível para compra no momento.*`;
+                    console.error(`[Telegraf] Step not found for payload: ${payload}`);
+                    await ctx.answerCbQuery('Passo não encontrado.');
                 }
-                
-                    await ctx.editMessageText(productMessage, { parse_mode: 'Markdown', reply_markup: keyboard });
+                break;
 
-            } else {
-                await ctx.reply("Produto não encontrado.");
-            }
-        } else if (actionType === 'BUY_WITH_METHOD') {
-            if (!actionPayload) {
-                return ctx.answerCbQuery('Ação inválida.');
-            }
-            const [method, gateway, productId] = actionPayload.split(':');
-            const buyerId = ctx.from.id;
-            
-            await ctx.editMessageText('⏳ Um momento, estamos preparando seu pagamento...');
-            
-            const productsCollection = db.collection<Product>('products');
-            const product = await productsCollection.findOne({ _id: new ObjectId(productId), tenantId: tenant._id.toString() });
-
-            if (!product) {
-                return await ctx.editMessageText('❌ Produto não encontrado.');
-            }
-
-            const salesCollection = db.collection('sales');
-            let sale = await salesCollection.findOne({
-                tenantId: tenant._id.toString(),
-                productId: product._id.toString(),
-                userId: buyerId.toString(),
-                status: 'pending'
-            });
-
-            let saleId;
-
-            if (sale) {
-                console.log(`[Telegraf] Venda pendente encontrada: ${sale._id.toString()}`);
-                saleId = sale._id.toString();
-                // Atualiza o messageId para que possamos editar a mensagem correta
-                await salesCollection.updateOne({ _id: sale._id }, { $set: { telegramMessageId: ctx.callbackQuery.message.message_id } });
-            } else {
-                const newSale = {
-                    tenantId: tenant._id.toString(),
-                    productId: product._id.toString(),
-                    userId: buyerId.toString(),
-                    telegramChatId: ctx.chat.id,
-                    telegramMessageId: ctx.callbackQuery.message.message_id,
-                    status: 'pending',
-                    paymentGateway: gateway,
-                    createdAt: new Date(),
-                    paymentDetails: {}, // Objeto para armazenar detalhes do pagamento
-                };
-                const saleResult = await salesCollection.insertOne(newSale);
-                saleId = saleResult.insertedId.toString();
-                sale = await salesCollection.findOne({ _id: saleResult.insertedId }) as (Sale | null); // Recarrega a venda para ter todos os dados
-                console.log(`[Telegraf] Nova venda criada: ${saleId}`);
-            }
-
-            if (!sale) {
-                return await ctx.editMessageText('❌ Erro ao criar ou encontrar registro de venda.');
-            }
-
-            if (gateway === 'mercadopago') {
-                if (method === 'credit_card') {
-                    // Reutiliza o link de pagamento se já existir
-                    if (sale.paymentDetails?.init_point) {
-                        console.log(`[Telegraf] Reutilizando link de pagamento para a venda ${saleId}`);
-                        return await ctx.editMessageText('✅ Link de pagamento gerado! Clique no botão abaixo para pagar.', {
-                             reply_markup: { 
-                                 inline_keyboard: [
-                                     [{ text: 'Pagar Agora', url: sale.paymentDetails.init_point }],
-                                     [{ text: '❌ Cancelar Compra', callback_data: `cancel_sale:${saleId}` }]
-                                 ] 
-                             }
-                         });
-                    }
-
-                    const result = await createMercadoPagoPreference(tenant, product, saleId, buyerId.toString());
-                    if (result.success && result.init_point) {
-                        await salesCollection.updateOne({ _id: new ObjectId(saleId) }, { $set: { "paymentDetails.init_point": result.init_point, "paymentDetails.preferenceId": result.preferenceId }});
-                        await ctx.editMessageText('✅ Link de pagamento gerado! Clique no botão abaixo para pagar.', {
-                            reply_markup: { 
-                                inline_keyboard: [
-                                    [{ text: 'Pagar Agora', url: result.init_point }],
-                                    [{ text: '❌ Cancelar Compra', callback_data: `cancel_sale:${saleId}` }]
-                                ] 
-                            }
-                        });
-                    } else {
-                        await ctx.editMessageText(`❌ Erro ao gerar link: ${result.message}`);
-                    }
-                } else if (method === 'pix') {
-                    if (sale.paymentDetails?.qrCode && sale.paymentDetails?.qrCodeBase64) {
-                        console.log(`[Telegraf] Reutilizando PIX para a venda ${saleId}`);
-                        await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
-                        const qrCodeBuffer = Buffer.from(sale.paymentDetails.qrCodeBase64, 'base64');
-                        const pixCaption = `✅ *PIX para ${product.name}!*\n\nPague com o QR Code ou use o código abaixo. Expira em 30 minutos.\n\n\`\`\`\n${sale.paymentDetails.qrCode}\n\`\`\``;
-                        const photoMessage = await ctx.replyWithPhoto({ source: qrCodeBuffer }, {
-                            caption: pixCaption,
-                            parse_mode: 'Markdown',
-                            reply_markup: { inline_keyboard: [[{ text: '❌ Cancelar Compra', callback_data: `cancel_sale:${saleId}` }]] }
-                        });
-                        await salesCollection.updateOne({ _id: new ObjectId(saleId) }, { $set: { telegramMessageId: photoMessage.message_id } });
-                        return;
-                    }
-
-                     const result = await createMercadoPagoPixPayment(tenant, product, saleId, buyerId.toString());
-                    
-                    if (result.success && result.qrCode && result.qrCodeBase64) {
-                        await salesCollection.updateOne({ _id: new ObjectId(saleId) }, { 
-                            $set: { 
-                                "paymentDetails.qrCode": result.qrCode,
-                                "paymentDetails.qrCodeBase64": result.qrCodeBase64,
-                                "paymentDetails.paymentId": result.paymentId,
-                            }
-                        });
-
-                        await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
-
-                        const qrCodeBuffer = Buffer.from(result.qrCodeBase64, 'base64');
-                        const pixCaption = `✅ *PIX para ${product.name}!*\n\nPague com o QR Code ou use o código abaixo. Expira em 30 minutos.\n\n\`\`\`\n${result.qrCode}\n\`\`\``;
-                        
-                        const photoMessage = await ctx.replyWithPhoto({ source: qrCodeBuffer }, {
-                            caption: pixCaption,
-                            parse_mode: 'Markdown',
-                            reply_markup: {
-                                inline_keyboard: [
-                                    [{ text: '❌ Cancelar Compra', callback_data: `cancel_sale:${saleId}` }]
-                                ]
-                            }
-                        });
-
-                        await salesCollection.updateOne(
-                            { _id: new ObjectId(saleId) },
-                            { $set: { telegramMessageId: photoMessage.message_id } }
-                        );
-
-                    } else {
-                        await ctx.editMessageText(`❌ Erro ao gerar PIX: ${result.message}`);
-                    }
-                }
-            }
-        } else if (actionType === 'cancel_sale') {
-            const saleId = actionPayload;
-            try {
-                await db.collection('sales').updateOne({ _id: new ObjectId(saleId) }, { $set: { status: 'cancelled' } });
-                await ctx.deleteMessage();
-                await ctx.answerCbQuery('Compra cancelada!');
-                
-                const startFlow = botConfig.flows.find((f) => f.trigger === '/start');
-                if (startFlow?.startStepId) {
-                    const startStep = startFlow.steps.find(s => s.id === startFlow.startStepId);
-                    if (startStep) await executeStep(ctx, startStep);
-                }
-            } catch (error) {
-                console.error('Error in cancel_sale:', error);
-                await ctx.answerCbQuery('Erro ao cancelar.', { show_alert: true });
-                const startFlow = botConfig.flows.find((f) => f.trigger === '/start');
-                if (startFlow?.startStepId) {
-                    const startStep = startFlow.steps.find(s => s.id === startFlow.startStepId);
-                    if (startStep) await executeStep(ctx, startStep);
-                }
-            }
-        } else if (actionType === 'START_OVER') {
-            try {
-                await ctx.deleteMessage();
-                const startFlow = botConfig.flows.find((f) => f.trigger === '/start');
-                if (startFlow?.startStepId) {
-                    const startStep = startFlow.steps.find(s => s.id === startFlow.startStepId);
+            case 'MAIN_MENU':
+                const mainFlow = allFlows.find(f => f.trigger === '/start');
+                if (mainFlow) {
+                    const startStep = allFlows.flatMap(f => f.steps).find(s => s.id === mainFlow.startStepId);
                     if (startStep) {
                         await executeStep(ctx, startStep);
                     } else {
-                        await ctx.reply('O fluxo principal de reinício não foi encontrado.');
+                        await ctx.answerCbQuery('Fluxo principal não encontrado.');
                     }
                 }
-            } catch (error) {
-                console.error('Error in START_OVER:', error);
-                // If deleting fails, try editing as a fallback
-                const startFlow = botConfig.flows.find((f) => f.trigger === '/start');
-                 if (startFlow?.startStepId) {
-                    const startStep = startFlow.steps.find(s => s.id === startFlow.startStepId);
-                    if (startStep) await executeStep(ctx, startStep);
+                break;
+            
+            case 'SHOW_PROFILE':
+                 const mainFlowForProfile = allFlows.find(f => f.trigger === '/start');
+                 const { profileMessage, keyboard } = await generateProfileMessage(db, user, { showBackButton: !!mainFlowForProfile, startStepId: mainFlowForProfile?.startStepId || null });
+                 await ctx.editMessageText(profileMessage, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
+                 break;
+
+            case 'LINK_TO_PRODUCT':
+                const productsCollection = db.collection<Product>('products');
+                const salesCollection = db.collection<Sale>('sales');
+
+                if (!payload) {
+                    console.error('[Telegraf] LINK_TO_PRODUCT action called without a payload.');
+                    return ctx.answerCbQuery('Produto não especificado.');
                 }
+
+                const product = await productsCollection.findOne({ tenantId: tenant._id.toString(), _id: new ObjectId(payload) });
+                
+                if (!product) {
+                    console.error(`[Telegraf] Product with ID ${payload} not found for tenant ${tenant._id}`);
+                    return ctx.answerCbQuery('Produto não encontrado.');
+                }
+                
+                 let productMessage = `*${escapeMarkdown(product.name)}*\n\n${escapeMarkdown(product.description || '')}\n\n`;
+                 const isOfferActive = product.discountPrice != null && product.offerExpiresAt && new Date(product.offerExpiresAt) > new Date();
+                 
+                 const availableMethods: { name: string; type: 'pix' | 'credit_card'; gateway: string; }[] = [];
+                 if (product.paymentMethods?.pix && product.paymentMethods.pix !== 'none') {
+                     availableMethods.push({ name: 'PIX', type: 'pix', gateway: product.paymentMethods.pix });
+                 }
+                 if (product.paymentMethods?.credit_card && product.paymentMethods.credit_card !== 'none') {
+                     availableMethods.push({ name: 'Cartão de Crédito', type: 'credit_card', gateway: product.paymentMethods.credit_card });
+                     }
+ 
+                 let productKeyboard;
+ 
+                 if (product.price === 0) {
+                     productMessage += `*Preço: Grátis\\!*`;
+                     productKeyboard = { inline_keyboard: [[{ text: "✅ Obter Agora", callback_data: `ACQUIRE_PRODUCT:${product._id.toString()}` }]] };
+                 } else if (availableMethods.length > 0) {
+                     const price = isOfferActive ? product.discountPrice! : product.price;
+                     const priceString = `*Preço: R$ ${price.toFixed(2).replace('.', ',')}*`;
+                     const originalPriceString = isOfferActive ? ` (de ~R$ ${product.price.toFixed(2).replace('.', ',')}~)` : '';
+                     productMessage += `${priceString}${originalPriceString}\n\nEscolha como deseja pagar:`;
+ 
+                     const paymentButtons = availableMethods.map(method => ({
+                         text: `Pagar com ${method.name}`,
+                         callback_data: `BUY_WITH_METHOD:${method.type}:${method.gateway}:${product._id.toString()}`
+                     }));
+                     productKeyboard = { 
+                         inline_keyboard: [
+                             paymentButtons,
+                             [{ text: '⬅️ Voltar ao Início', callback_data: 'MAIN_MENU' }]
+                         ] 
+                     };
+                 } else {
+                     productMessage += `*Produto indisponível para compra no momento\\.*`;
+                 }
+                 
+                await ctx.editMessageText(productMessage, { parse_mode: 'MarkdownV2', reply_markup: productKeyboard });
+                break;
+
+            case 'BUY_WITH_METHOD':
+             if (!payload) {
+                 return ctx.answerCbQuery('Ação inválida.');
+             }
+             const [method, gateway, productId] = payload.split(':');
+             const buyerId = user._id.toString();
+             
+             await ctx.editMessageText('⏳ Um momento, estamos preparando seu pagamento...');
+             
+             const productForPurchase = await db.collection<Product>('products').findOne({ _id: new ObjectId(productId), tenantId: tenant._id.toString() });
+             
+             if (!productForPurchase) {
+                 return await ctx.editMessageText('❌ Produto não encontrado.');
+             }
+             
+             const salesCol = db.collection<Sale>('sales');
+             let saleForPurchase = await salesCol.findOne({
+                 tenantId: tenant._id.toString(),
+                 productId: productForPurchase._id.toString(),
+                 userId: buyerId,
+                 status: 'pending'
+             });
+ 
+             let saleId;
+ 
+             if (saleForPurchase) {
+                 saleId = saleForPurchase._id.toString();
+                 await salesCol.updateOne({ _id: saleForPurchase._id }, { $set: { telegramMessageId: ctx.callbackQuery.message.message_id } });
+             } else {
+                 const newSale = {
+                     _id: new ObjectId(),
+                     tenantId: tenant._id.toString(),
+                     productId: productForPurchase._id.toString(),
+                     userId: buyerId,
+                     telegramChatId: ctx.chat.id,
+                     telegramMessageId: ctx.callbackQuery.message.message_id,
+                     status: 'pending' as 'pending',
+                     paymentGateway: gateway,
+                     createdAt: new Date(),
+                     paymentDetails: {},
+                 };
+                 const saleResult = await salesCol.insertOne(newSale);
+                 saleId = saleResult.insertedId.toString();
+                 saleForPurchase = await salesCol.findOne({ _id: saleResult.insertedId });
+             }
+             
+             if (!saleId || !saleForPurchase) {
+                 return await ctx.editMessageText('❌ Erro ao criar ou encontrar registro de venda.');
+             }
+ 
+             if (gateway === 'mercadopago') {
+                 if (method === 'credit_card') {
+                     if (saleForPurchase.paymentDetails?.init_point) {
+                         return await ctx.editMessageText('✅ Link de pagamento gerado! Clique no botão abaixo para pagar.', {
+                              reply_markup: { 
+                                  inline_keyboard: [
+                                      [{ text: 'Pagar Agora', url: saleForPurchase.paymentDetails.init_point }],
+                                      [{ text: '❌ Cancelar Compra', callback_data: `CANCEL_SALE:${saleId}` }]
+                                  ] 
+                              }
+                          });
+                     }
+ 
+                     const result = await createMercadoPagoPreference(tenant, productForPurchase, saleId, buyerId);
+                     if (result.success && result.init_point && result.preferenceId) {
+                         await salesCol.updateOne({ _id: new ObjectId(saleId) }, { $set: { "paymentDetails.init_point": result.init_point, "paymentDetails.preferenceId": result.preferenceId }});
+                         await ctx.editMessageText('✅ Link de pagamento gerado! Clique no botão abaixo para pagar.', {
+                             reply_markup: { 
+                                 inline_keyboard: [
+                                     [{ text: 'Pagar Agora', url: result.init_point }],
+                                     [{ text: '❌ Cancelar Compra', callback_data: `CANCEL_SALE:${saleId}` }]
+                                 ] 
+                             }
+                         });
+                     } else {
+                         await ctx.editMessageText(`❌ Erro ao gerar link: ${result.message}`);
+                     }
+                 } else if (method === 'pix') {
+                     if (saleForPurchase.paymentDetails?.qrCode && saleForPurchase.paymentDetails?.qrCodeBase64) {
+                         await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+                         const qrCodeBuffer = Buffer.from(saleForPurchase.paymentDetails.qrCodeBase64, 'base64');
+                         const pixCaption = `✅ *PIX para ${escapeMarkdown(productForPurchase.name)}*\\!\\n\\nPague com o QR Code ou use o código abaixo\\. Expira em 30 minutos.\\n\\n\`\`\`\n${escapeMarkdown(saleForPurchase.paymentDetails.qrCode)}\n\`\`\``;
+                         const photoMessage = await ctx.replyWithPhoto({ source: qrCodeBuffer }, {
+                             caption: pixCaption,
+                             parse_mode: 'MarkdownV2',
+                             reply_markup: { inline_keyboard: [[{ text: '❌ Cancelar Compra', callback_data: `CANCEL_SALE:${saleId}` }]] }
+                         });
+                         await salesCol.updateOne({ _id: new ObjectId(saleId) }, { $set: { telegramMessageId: photoMessage.message_id } });
+                         return;
+                     }
+ 
+                      const result = await createMercadoPagoPixPayment(tenant, productForPurchase, saleId, buyerId);
+                     
+                     if (result.success && result.qrCode && result.qrCodeBase64 && result.paymentId) {
+                         await salesCol.updateOne({ _id: new ObjectId(saleId) }, { 
+                             $set: { 
+                                 "paymentDetails.qrCode": result.qrCode,
+                                 "paymentDetails.qrCodeBase64": result.qrCodeBase64,
+                                 "paymentDetails.paymentId": result.paymentId,
+                             }
+                         });
+ 
+                         await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+ 
+                         const qrCodeBuffer = Buffer.from(result.qrCodeBase64, 'base64');
+                         const pixCaption = `✅ *PIX para ${escapeMarkdown(productForPurchase.name)}*\\!\\n\\nPague com o QR Code ou use o código abaixo\\. Expira em 30 minutos.\\n\\n\`\`\`\n${escapeMarkdown(result.qrCode)}\n\`\`\``;
+                         
+                         const photoMessage = await ctx.replyWithPhoto({ source: qrCodeBuffer }, {
+                             caption: pixCaption,
+                             parse_mode: 'MarkdownV2',
+                             reply_markup: {
+                                 inline_keyboard: [
+                                     [{ text: '❌ Cancelar Compra', callback_data: `CANCEL_SALE:${saleId}` }]
+                                 ]
+                             }
+                         });
+                         await salesCol.updateOne(
+                             { _id: new ObjectId(saleId) },
+                             { $set: { telegramMessageId: photoMessage.message_id } }
+                         );
+ 
+                     } else {
+                         await ctx.editMessageText(`❌ Erro ao gerar PIX: ${result.message}`);
+                     }
+                 }
+             }
+            break;
+
+            case 'CANCEL_SALE':
+                 const saleToCancelId = payload;
+                 try {
+                     await db.collection('sales').updateOne({ _id: new ObjectId(saleToCancelId) }, { $set: { status: 'cancelled' } });
+                     await ctx.deleteMessage();
+                     await ctx.answerCbQuery('Compra cancelada!');
+                     
+                     const startFlow = allFlows.find((f) => f.trigger === '/start');
+                     if (startFlow?.startStepId) {
+                         const startStep = startFlow.steps.find(s => s.id === startFlow.startStepId);
+                         if (startStep) await executeStep(ctx, startStep);
+                     }
+                 } catch (error) {
+                     console.error('Error in cancel_sale:', error);
+                     await ctx.answerCbQuery('Erro ao cancelar.', { show_alert: true });
+                 }
+                 break;
+                
+            case 'CONFIRM_PAYMENT':
+                 const saleIdToConfirm = payload;
+                 if (!saleIdToConfirm) {
+                     return ctx.answerCbQuery('ID da venda não encontrado.');
+                 }
+                
+                 await ctx.editMessageText('🔍 Verificando seu pagamento... por favor, aguarde um momento.');
+                 
+                 break;
+
+
+            default:
+                console.warn(`[Telegraf] Unhandled action type: ${actionType}`);
+                await ctx.answerCbQuery(`Ação desconhecida: ${actionType}`);
+                break;
+        }
+    });
+
+    bot.use(async (ctx: any, next) => {
+        try {
+            await next()
+        } catch (error) {
+            console.error('[Telegraf] Unhandled error in middleware/handler:', error)
+        }
+    })
+
+    bot.catch((err: any, ctx) => {
+        console.error(`[Telegraf] Global error for ${ctx.updateType}`, err);
+        
+        if (err.response && err.response.description) {
+            console.error(`[Telegraf] Telegram API Error: ${err.response.description}`);
+        }
+
+        if (ctx.callbackQuery) {
+            try {
+                ctx.answerCbQuery('Ocorreu um erro, por favor tente novamente.');
+                ctx.deleteMessage().catch(e => {
+                     if (e.response?.description?.includes('message to delete not found')) {
+                        console.log('[Telegraf] Message to delete was already gone.');
+                     } else {
+                        console.warn('[Telegraf] Failed to delete message on error:', e.response?.description);
+                     }
+                });
+            } catch (e) {
+                console.warn('[Telegraf] Failed to send error feedback to user:', e);
             }
         }
     });
-    
+
     return bot;
 }

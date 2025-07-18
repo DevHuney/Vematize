@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Reusable password schema with complexity rules
 export const PasswordSchema = z.string()
     .min(8, { message: 'A senha deve ter no mínimo 8 caracteres.' })
     .regex(/[a-z]/, { message: 'A senha deve conter pelo menos uma letra minúscula.' })
@@ -8,25 +7,22 @@ export const PasswordSchema = z.string()
     .regex(/[0-9]/, { message: 'A senha deve conter pelo menos um número.' })
     .regex(/[^a-zA-Z0-9]/, { message: 'A senha deve conter pelo menos um caractere especial.' });
 
-// Schema for creating/updating an Admin
 export const CreateAdminSchema = z.object({
   username: z.string().min(3, { message: "O nome de usuário deve ter pelo menos 3 caracteres." }),
-  password: PasswordSchema, // Use the reusable schema
+  password: PasswordSchema, 
 });
 
-// Schema for Client/Tenant Registration
 export const ClientRegisterSchema = z.object({
     name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
     subdomain: z.string().min(3, { message: "O subdomínio deve ter pelo menos 3 caracteres." }).regex(/^[a-z0-9-]+$/, { message: "Use apenas letras minúsculas, números e hífens." }),
-    cpfCnpj: z.string().min(11, { message: "CPF/CNPJ inválido."}), // Basic validation
+    cpfCnpj: z.string().min(11, { message: "CPF/CNPJ inválido."}), 
     email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
-    password: PasswordSchema, // Use the reusable schema for strong passwords on registration
+    password: PasswordSchema, 
 });
 
-// Schema for Client Login
 export const ClientLoginSchema = z.object({
   email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
-  password: z.string().min(1, { message: "A senha é obrigatória." }), // Simple validation for login
+  password: z.string().min(1, { message: "A senha é obrigatória." }), 
 });
 
 export const MercadoPagoSettingsSchema = z.object({
@@ -44,10 +40,10 @@ export const MercadoPagoSettingsSchema = z.object({
     if (data.mode === 'production') {
         return !!data.production_public_key && !!data.production_access_token;
     }
-    return true; // Sandbox keys are optional for saving
+    return true; 
 }, {
     message: "As credenciais de Produção (Public Key e Access Token) são obrigatórias quando o modo de Produção está ativo.",
-    path: ["production_public_key"], // you can specify a path to show the error
+    path: ["production_public_key"], 
 });
 
 export const PaymentIntegrationsSchema = z.object({
@@ -78,18 +74,15 @@ export const ProductSchema = z.object({
 
   type: z.enum(['product', 'subscription']).default('product'),
   
-  // Subscription fields
   durationDays: z.coerce.number().int().positive().optional().nullable(),
   isTelegramGroupAccess: z.boolean().optional(),
   telegramGroupId: z.string().optional().nullable(),
 
-  // Product fields
   productSubtype: z.enum(['standard', 'digital_file', 'activation_codes']).optional(),
   stock: z.coerce.number().int({ message: 'O estoque deve ser um número inteiro.' }).min(0, { message: 'O estoque não pode ser negativo.' }).optional().nullable(),
-  activationCodes: z.string().optional(), // Raw string from textarea
+  activationCodes: z.string().optional(), 
   hostedFileUrl: z.string().url().optional().nullable(),
   
-  // Offer fields
   discountPrice: z.coerce.number().min(0, { message: 'O preço com desconto não pode ser negativo.' }).optional().nullable(),
   offerExpiresAt: z.string().optional().nullable(),
 
@@ -127,7 +120,6 @@ export const ProductSchema = z.object({
 });
 
 
-// New Schemas for the dynamic bot flow editor
 export const BotActionSchema = z.object({
   type: z.enum(['GO_TO_STEP', 'LINK_TO_PRODUCT', 'MAIN_MENU', 'SHOW_PROFILE']),
   payload: z.string().optional(),

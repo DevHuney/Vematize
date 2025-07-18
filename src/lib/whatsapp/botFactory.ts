@@ -2,16 +2,8 @@ import type { Tenant, User, BotStep, BotButton } from '@/lib/types';
 import clientPromise from '@/lib/mongodb';
 import { z } from 'zod';
 
-// TODO: Define a more specific type for the webhook payload
 type WhatsappWebhookPayload = any;
 
-/**
- * Sends a text message using the Evolution API.
- * @param tenant The tenant configuration.
- * @param recipient The recipient's WhatsApp ID (e.g., 5531999998888@s.whatsapp.net).
- * @param message The text message to send.
- * @returns The response from the Evolution API.
- */
 async function sendTextMessage(tenant: Tenant, recipient: string, message: string) {
     const { evolutionApiUrl, evolutionApiKey, evolutionApiInstance } = tenant.connections?.whatsapp || {};
 
@@ -46,14 +38,6 @@ async function sendTextMessage(tenant: Tenant, recipient: string, message: strin
     }
 }
 
-/**
- * Sends a list message using the Evolution API.
- * This is an experimental feature.
- * @param tenant The tenant configuration.
- * @param recipient The recipient's WhatsApp ID.
- * @param step The bot step containing the message and buttons.
- * @returns The response from the Evolution API.
- */
 async function sendListMessage(tenant: Tenant, recipient: string, step: BotStep) {
     const { evolutionApiUrl, evolutionApiKey, evolutionApiInstance } = tenant.connections?.whatsapp || {};
 
@@ -66,7 +50,7 @@ async function sendListMessage(tenant: Tenant, recipient: string, step: BotStep)
     const listMessagePayload = {
         number: recipient,
         listMessage: {
-            title: step.name, // Using step name as title
+            title: step.name, 
             description: step.message,
             buttonText: "Escolha uma opção",
             sections: [{
@@ -76,7 +60,7 @@ async function sendListMessage(tenant: Tenant, recipient: string, step: BotStep)
                     return {
                         rowId: callback_data,
                         title: button.text,
-                        description: "" // Optional description
+                        description: "" 
                     };
                 })
             }]
@@ -105,34 +89,19 @@ async function sendListMessage(tenant: Tenant, recipient: string, step: BotStep)
     }
 }
 
-/**
- * Executes a bot step, sending either a text or a list message.
- * @param tenant The tenant configuration.
- * @param recipient The recipient's WhatsApp ID.
- * @param step The bot step to execute.
- */
 async function executeStep(tenant: Tenant, recipient: string, step: BotStep) {
     if (step.buttons && step.buttons.length > 0) {
-        // Send a list if there are buttons
         await sendListMessage(tenant, recipient, step);
     } else {
-        // Send a simple text message if no buttons
         await sendTextMessage(tenant, recipient, step.message);
     }
 }
 
-/**
- * Creates and handles the bot logic for an incoming WhatsApp message.
- * @param tenant The tenant for which the bot is operating.
- * @param payload The full webhook payload from the Evolution API.
- */
 export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWebhookPayload) {
     const { data } = payload;
     const senderId = data.key?.remoteJid;
     const senderName = data.pushName;
 
-    // Determine the command from the payload
-    // It can be a regular text message or a reply from a list.
     const messageText = data.message?.conversation || data.message?.extendedTextMessage?.text || '';
     const listResponse = data.message?.listResponseMessage;
     const command = listResponse ? listResponse.singleSelectReply?.selectedRowId : messageText;
@@ -142,7 +111,6 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
         return;
     }
 
-    // Upsert user logic...
     try {
         const db = (await clientPromise).db('vematize');
         await db.collection<User>('users').updateOne(
@@ -166,13 +134,11 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
 
     console.log(`[Whatsapp Bot] Processing command "${command}" for ${senderId}`);
 
-    // --- Main Flow Logic ---
     const botConfig = tenant.botConfig;
     if (!botConfig || !botConfig.flows || botConfig.flows.length === 0) {
         return sendTextMessage(tenant, senderId, "Olá! Este bot ainda não foi configurado.");
     }
 
-    // Find the flow triggered by '/start' or the first flow available
     const mainFlow = botConfig.flows.find(f => f.trigger === '/start') || botConfig.flows[0];
     if (!mainFlow || !mainFlow.startStepId) {
          return sendTextMessage(tenant, senderId, "Olá! O fluxo principal do bot não está configurado corretamente.");
@@ -185,7 +151,6 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
         return sendTextMessage(tenant, senderId, "O passo inicial do bot não foi encontrado.");
     }
 
-    // Is it a callback action (e.g., from a list)?
     if (command.includes(':')) {
         const [actionType, actionPayload] = command.split(':', 2);
 
@@ -206,12 +171,10 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
             return;
         }
 
-        // TODO: Handle other action types like LINK_TO_PRODUCT, SHOW_PROFILE etc.
         console.log(`[Whatsapp Bot] Unhandled action type: ${actionType}`);
         return;
     }
 
-    // Is it the trigger command?
     if (command.trim().toLowerCase() === '/start') {
         const startStep = allSteps.find(s => s.id === mainFlow.startStepId);
         if (startStep) {
@@ -221,7 +184,6 @@ export async function handleWhatsappMessage(tenant: Tenant, payload: WhatsappWeb
              await sendTextMessage(tenant, senderId, "Este fluxo está configurado incorretamente.");
         }
     } else {
-        // Fallback for unrecognized commands
         console.log(`[Whatsapp Bot] No flow found for command "${command}".`);
         await sendTextMessage(tenant, senderId, `Comando não reconhecido. Digite /start para começar.`);
     }

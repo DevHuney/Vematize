@@ -11,12 +11,11 @@ export interface User {
   username?: string;
   state?: 'active' | 'inactive' | 'expired';
   plan?: string;
-  purchases?: Purchase[]; // <--- Adicionar esta linha
+  purchases?: Purchase[];
   createdAt: Date;
   updatedAt?: Date;
 }
 
-// Adicionar esta nova interface
 export interface Purchase {
   purchaseId: string;
   productId: string;
@@ -32,22 +31,17 @@ export type BotActionType = 'GO_TO_STEP' | 'LINK_TO_PRODUCT' | 'MAIN_MENU' | 'SH
 
 export interface BotAction {
   type: BotActionType;
-  /**
-   * - For 'GO_TO_STEP': The ID of the target step.
-   * - For 'LINK_TO_PRODUCT': The ID of the product/plan.
-   * - For 'MAIN_MENU': This can be undefined.
-   */
   payload?: string;
 }
 
 export interface BotButton {
-  id: string; // Unique ID for the button
+  id: string;
   text: string;
   action: BotAction;
 }
 
 export interface BotStep {
-  id: string; // Unique ID for the step
+  id: string;
   name: string;
   message: string;
   buttons: BotButton[];
@@ -62,12 +56,12 @@ export interface Tenant {
   ownerEmail: string;
   passwordHash: string;
   cpfCnpj: string;
-  trialEndsAt?: string; // ISO Date
-  planId?: string; // Refers to a SaasPlan ID
+  trialEndsAt?: string;
+  planId?: string;
   subscriptionProvider?: 'mercadopago';
   subscriptionId?: string;
   subscriptionStatus?: 'active' | 'inactive' | 'trialing' | 'canceled';
-  subscriptionEndsAt?: string; // ISO Date
+  subscriptionEndsAt?: string;
   connections?: {
     whatsapp?: {
       evolutionApiUrl?: string;
@@ -99,9 +93,8 @@ export interface Tenant {
   };
 }
 
-// A plan for the SaaS itself, which tenants subscribe to.
 export interface SaasPlan {
-  id: string; // Holds the string version of MongoDB's _id
+  id: string;
   name: string;
   price: number;
   durationDays: number;
@@ -114,9 +107,8 @@ export interface ProductPaymentMethods {
   credit_card?: string;
 }
 
-// A product/service sold by a tenant to their end-users via the bot.
 export interface Product {
-    id: string; // MongoDB _id
+    id: string;
     tenantId: string;
     name: string;
     description?: string;
@@ -124,21 +116,18 @@ export interface Product {
     paymentMethods?: ProductPaymentMethods;
     type: 'product' | 'subscription';
     
-    // Subscription-specific fields
     durationDays?: number | null;
     isTelegramGroupAccess?: boolean;
     telegramGroupId?: string | null;
 
-    // Product-specific fields
     productSubtype?: 'standard' | 'digital_file' | 'activation_codes';
     stock?: number | null;
     activationCodes?: string[];
     activationCodesUsed?: string[];
     hostedFileUrl?: string | null;
     
-    // Offer fields
     discountPrice?: number | null;
-    offerExpiresAt?: string | null; // ISO Date string
+    offerExpiresAt?: string | null;
 }
 
 export interface Sale {
