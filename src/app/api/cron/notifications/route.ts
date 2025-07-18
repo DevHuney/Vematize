@@ -4,7 +4,6 @@ import { Tenant, User, Purchase, Product } from '@/lib/types';
 import { Telegraf } from 'telegraf';
 import { Db, ObjectId } from 'mongodb';
 
-// Helper to escape Markdown characters
 function escapeMarkdown(text: string): string {
   if (!text) return '';
   const charsToEscape = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
 
       const bot = new Telegraf(tenant.connections.telegram.botToken);
 
-      // --- 1. Handle Notifications for Soon-to-Expire Subscriptions ---
       const fiveDaysFromNow = new Date();
       fiveDaysFromNow.setDate(now.getDate() + 5);
 
@@ -46,7 +44,7 @@ export async function GET(request: NextRequest) {
             'purchases.expiresAt': { $gte: now, $lt: fiveDaysFromNow },
             $or: [
               { 'purchases.lastNotified': { $exists: false } },
-              { 'purchases.lastNotified': { $lt: new Date(Date.now() - 23 * 60 * 60 * 1000) } } // ~23 hours ago
+              { 'purchases.lastNotified': { $lt: new Date(Date.now() - 23 * 60 * 60 * 1000) } } 
             ]
         }},
       ]).toArray();
@@ -61,7 +59,6 @@ export async function GET(request: NextRequest) {
         try {
           await bot.telegram.sendMessage(user.telegramId, message, { parse_mode: 'Markdown' });
           
-          // Update the notification timestamp
           await db.collection('users').updateOne(
             { _id: new ObjectId(user._id), 'purchases.purchaseId': purchase.purchaseId },
             { $set: { 'purchases.$.lastNotified': new Date() } }
@@ -74,13 +71,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // --- 2. Handle Expired Subscriptions ---
       const expiredUsers = await db.collection<User>('users').aggregate([
         { $match: { tenantId: tenant._id.toString() } },
         { $unwind: '$purchases' },
         { $match: {
             'purchases.type': 'subscription',
-            'purchases.status': 'approved', // Find active subscriptions that are now expired
+            'purchases.status': 'approved', 
             'purchases.expiresAt': { $lt: now },
         }},
       ]).toArray();
@@ -91,9 +87,7 @@ export async function GET(request: NextRequest) {
 
         if (product?.isTelegramGroupAccess && product.telegramGroupId) {
             try {
-                // Kick member from the group
                 await bot.telegram.banChatMember(product.telegramGroupId, user.telegramId);
-                // Unban immediately so they can re-join if they re-purchase
                 await bot.telegram.unbanChatMember(product.telegramGroupId, user.telegramId);
                 
                 const message = `Seu acesso ao produto *${escapeMarkdown(product.name)}* expirou e foi removido. Para voltar a ter acesso, por favor, faça uma nova compra.`;
@@ -107,7 +101,6 @@ export async function GET(request: NextRequest) {
             }
         }
         
-        // Update the purchase status to 'expired' regardless of kick success
         await db.collection('users').updateOne(
             { _id: new ObjectId(user._id), 'purchases.purchaseId': purchase.purchaseId },
             { $set: { 'purchases.$.status': 'expired' } }

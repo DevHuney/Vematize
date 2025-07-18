@@ -134,15 +134,12 @@ export async function getBotConfig(subdomain: string): Promise<z.infer<typeof Bo
             { projection: { botConfig: 1 } }
         );
 
-        // We use safe parsing to ensure the data from DB conforms to our new schema.
-        // This prevents crashes if old-structured data is still in the DB.
         const parseResult = BotConfigSchema.safeParse(tenant?.botConfig);
         
         if (parseResult.success) {
             return parseResult.data;
         }
 
-        // If parsing fails (e.g., old data structure), return null so the frontend can load defaults.
         if(tenant?.botConfig) {
             console.warn(`Bot config for subdomain "${subdomain}" has outdated structure and will be reset.`);
         }

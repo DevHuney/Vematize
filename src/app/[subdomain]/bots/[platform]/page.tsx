@@ -20,9 +20,7 @@ export default async function BotPlatformPage({ params }: { params: { subdomain:
     
     const config = platformConfigMap[platformKey];
 
-    // Por enquanto, focamos no Telegram
     if (platformKey !== 'telegram') {
-         // Aqui você pode renderizar a UI para outras plataformas ou uma mensagem de "em desenvolvimento"
         return (
              <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
                 <div className="flex items-center space-x-2">

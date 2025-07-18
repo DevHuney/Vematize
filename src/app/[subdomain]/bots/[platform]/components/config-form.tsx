@@ -58,7 +58,7 @@ function WhatsappConnectionManager({ subdomain }: { subdomain: string }) {
 
         const interval = setInterval(async () => {
             await checkStatus();
-        }, 5000); // Check status every 5 seconds
+        }, 5000);
 
         return () => clearInterval(interval);
     }, [qrCodeUrl, checkStatus]);
