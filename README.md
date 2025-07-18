@@ -1,0 +1,1 @@
+Senhores recrutadores, esse repositório só está aberto, durante o processo seletivo, assim que for finalizado esse repositório retornará a ser privado. 
